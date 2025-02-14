@@ -1,102 +1,65 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
--- The above pragma enables all warnings
--- (except for unused imports from Task1)
-
 module Task2 where
 
--- Explicit import of Prelude to hide functions
--- that are not supposed to be used in this assignment
 import Prelude hiding (reverse, map, filter, sum, foldl, foldr, length, head, tail, init, last, show, read)
+import Task1 (reverse, map, sum, doubleEveryOther)
 
--- You can reuse already implemented functions from Task1
--- by listing them in this import clause
--- NOTE: only listed functions are imported, everything else remains hidden
-import Task1 (reverse, map, sum)
+splitLast :: [a] -> ([a], a)
+splitLast []     = error "splitLast: пустой список"
+splitLast [x]    = ([], x)
+splitLast (x:xs) = let (initPart, lastElem) = splitLast xs
+                   in (x : initPart, lastElem)
 
------------------------------------
---
--- Computes check digit number for given abstract characters using Luhn algorithm mod N
--- and given mapping function
---
--- Usage example:
---
--- >>> luhnModN 10 id [3,4,5,6]
--- 1
+
+normalizeModN :: Int -> Int -> Int
+normalizeModN n x = if x >= n then x - (n - 1) else x
+
+doubleEveryOtherMod :: Int -> [Int] -> [Int]
+doubleEveryOtherMod _ []     = []
+doubleEveryOtherMod n [x]        = [normalizeModN n (x * 2)]
+doubleEveryOtherMod n (x:y:rest) = normalizeModN n (x * 2) : y : doubleEveryOtherMod n rest
 
 luhnModN :: Int -> (a -> Int) -> [a] -> Int
-luhnModN = error "TODO: define luhnModN"
+luhnModN n f xs =
+  let digits    = map f xs
+      revDigits = reverse digits
+      processed = doubleEveryOtherMod n revDigits
+      total     = sum processed
+  in (n - (total `mod` n)) `mod` n
 
------------------------------------
---
--- Computes decimal check digit for given digits using Luhn algorithm mod 10
---
--- Usage example:
---
--- >>> luhnDec [3,4,5,6]
--- 1
 
 luhnDec :: [Int] -> Int
-luhnDec = error "TODO: define luhnDec"
-
------------------------------------
---
--- Computes hexadecimal check digit number for given digits using Luhn algorithm mod 16
---
--- Usage example:
---
--- >>> luhnHex "123abc"
--- 15
+luhnDec = luhnModN 10 id
 
 luhnHex :: [Char] -> Int
-luhnHex = error "TODO: define luhnHex"
+luhnHex = luhnModN 16 digitToInt
 
------------------------------------
---
--- Converts given hexadecimal digit to its ordinal number between 0 and 15
---
--- Usage example:
---
--- >>> map digitToInt ['0'..'9']
--- [0,1,2,3,4,5,6,7,8,9]
--- >>> map digitToInt ['a'..'f']
--- [10,11,12,13,14,15]
--- >>> map digitToInt ['A'..'F']
--- [10,11,12,13,14,15]
 
 digitToInt :: Char -> Int
-digitToInt = error "TODO: define digitToInt"
+digitToInt c
+  | c >= '0' && c <= '9' = fromEnum c - fromEnum '0'
+  | c >= 'a' && c <= 'f' = 10 + (fromEnum c - fromEnum 'a')
+  | c >= 'A' && c <= 'F' = 10 + (fromEnum c - fromEnum 'A')
+  | otherwise = error "digitToInt: некорректный символ"
 
------------------------------------
---
--- Checks whether the last decimal digit is a valid check digit
--- for the rest of the given number using Luhn algorithm mod 10
---
--- Usage example:
---
--- >>> validateDec 3456
--- False
--- >>> validateDec 34561
--- True
--- >>> validateDec 34562
--- False
+toDigitsDec :: Integer -> [Int]
+toDigitsDec n
+  | n <= 0    = []
+  | otherwise = toDigitsDec (n `div` 10) ++ [fromIntegral (n `mod` 10)]
+
 
 validateDec :: Integer -> Bool
-validateDec = error "TODO: define validateDec"
-
------------------------------------
---
--- Checks whether the last hexadecimal digit is a valid check digit
--- for the rest of the given number using Luhn algorithm mod 16
---
--- Usage example:
---
--- >>> validateHex "123abc"
--- False
--- >>> validateHex "123abcf"
--- True
--- >>> validateHex "123abc0"
--- False
+validateDec n =
+  let ds = toDigitsDec n
+  in case ds of
+       [] -> False
+       _  -> let (initDigits, checkDigit) = splitLast ds
+             in luhnDec initDigits == checkDigit
 
 validateHex :: [Char] -> Bool
-validateHex = error "TODO: define validateHex"
+validateHex s =
+  case s of
+    [] -> False
+    _  -> let (initChars, checkChar) = splitLast s
+          in luhnHex initChars == digitToInt checkChar
